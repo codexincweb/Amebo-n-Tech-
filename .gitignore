@@ -9,3 +9,5 @@ prisma/dev.db-journal
 *.tsbuildinfo
 backups/
 .vercel/
+
+/node_modules

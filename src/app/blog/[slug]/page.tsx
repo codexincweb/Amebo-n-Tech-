@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { db } from "@/lib/db";
+import CommentSection from "@/components/CommentSection";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,7 @@ export default async function BlogPostPage({ params }: Props) {
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
         </div>
       </article>
+      <CommentSection slug={post.slug} />
       <div className="mx-auto mt-14 max-w-3xl border-t border-stone-200 pt-7">
         <p className="text-sm text-stone-500">You&apos;ve reached the end of this story.</p>
         <Link href="/" className="mt-3 inline-flex font-semibold text-moss hover:underline">Discover more stories ↗</Link>

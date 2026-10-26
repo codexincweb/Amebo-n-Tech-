@@ -46,9 +46,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <BrandMark />
               <span className="brand-wordmark">Amebo <span className="text-moss">&apos;n</span> Tech<span className="brand-period">.</span></span>
             </Link>
-            <nav className="flex items-center gap-5 sm:gap-8" aria-label="Main navigation">
+            <nav className="flex items-center gap-3 sm:gap-6" aria-label="Main navigation">
               <Link href="/#latest" className="nav-link">Stories</Link>
-              <a href="mailto:hello@amebontech.com" className="nav-link hidden sm:inline">Contact</a>
+              <Link href="/about" className="nav-link hidden sm:inline">About</Link>
+              <Link href="/contact" className="nav-link">Contact</Link>
               <Link href="/admin/login" className="nav-admin">Admin <span aria-hidden="true">↗</span></Link>
             </nav>
           </div>
@@ -57,7 +58,15 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <footer className="site-footer">
           <div className="site-container flex flex-col gap-5 py-8 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3"><BrandMark /><div><p className="font-semibold">Amebo &apos;n Tech</p><p className="mt-1 text-xs text-stone-500">Curiosity for a connected world.</p></div></div>
-            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-stone-500"><a className="hover:text-ink" href="mailto:hello@amebontech.com">Contact</a><Link className="hover:text-ink" href="/">Home</Link><span>© {new Date().getFullYear()} Amebo &apos;n Tech</span></div>
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-stone-500">
+              <Link className="hover:text-ink" href="/about">About</Link>
+              <Link className="hover:text-ink" href="/contact">Contact</Link>
+              <Link className="hover:text-ink" href="/editorial-policy">Editorial policy</Link>
+              <Link className="hover:text-ink" href="/privacy-policy">Privacy</Link>
+              <Link className="hover:text-ink" href="/terms-of-use">Terms</Link>
+              <Link className="hover:text-ink" href="/">Home</Link>
+              <span>© {new Date().getFullYear()} Amebo &apos;n Tech</span>
+            </div>
           </div>
         </footer>
       </body>
