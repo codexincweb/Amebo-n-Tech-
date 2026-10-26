@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Post {
+  id         String   @id @default(cuid())
+  title      String   @db.VarChar(180)
+  slug       String   @unique @db.VarChar(120)
+  excerpt    String   @db.VarChar(500)
+  content    String   @db.Text
+  coverImage String?  @db.VarChar(2000)
+  published  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([published, createdAt])
+}

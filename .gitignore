@@ -1,0 +1,11 @@
+node_modules/
+.next/
+out/
+.env
+.env.*
+!.env.example
+prisma/dev.db
+prisma/dev.db-journal
+*.tsbuildinfo
+backups/
+.vercel/
