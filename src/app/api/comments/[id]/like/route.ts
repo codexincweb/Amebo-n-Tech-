@@ -104,10 +104,11 @@ export async function POST(
 
     const state = await db.$transaction(async (tx) => {
       // Serialize toggles from this visitor for this comment.
-      await tx.$queryRaw(Prisma.sql`
-        SELECT pg_advisory_xact_lock(
+      await tx.$queryRaw<{ locked: number }[]>(Prisma.sql`
+        SELECT 1 AS locked
+        FROM (SELECT pg_advisory_xact_lock(
           hashtextextended(${`${id}:${visitor.id}`}, 0)
-        )
+        )) AS lock_result
       `);
 
       const removed = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
