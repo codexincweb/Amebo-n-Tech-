@@ -22,7 +22,7 @@ type CommentRow = {
   likedByVisitor: boolean;
 };
 
-type RouteContext = { params: Promise<{ slug: string }> };
+type RouteContext = { params: Promise<{ id: string }> };
 
 function visitorCookie(request: NextRequest) {
   const existing = request.cookies.get(COOKIE_NAME)?.value;
@@ -68,7 +68,7 @@ function visitorHash(visitorId: string) {
 
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
-    const { slug } = await context.params;
+    const { id: slug } = await context.params;
 
     const post = await db.post.findFirst({
       where: { slug, published: true },
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 
   try {
-    const { slug } = await context.params;
+    const { id: slug } = await context.params;
 
     const post = await db.post.findFirst({
       where: { slug, published: true },
