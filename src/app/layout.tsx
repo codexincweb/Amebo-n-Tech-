@@ -48,6 +48,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             </Link>
             <nav className="flex items-center gap-3 sm:gap-6" aria-label="Main navigation">
               <Link href="/#latest" className="nav-link">Stories</Link>
+              <Link href="/live" className="nav-link">Live</Link>
               <Link href="/about" className="nav-link hidden sm:inline">About</Link>
               <Link href="/contact" className="nav-link">Contact</Link>
               <Link href="/admin/login" className="nav-admin">Admin <span aria-hidden="true">↗</span></Link>

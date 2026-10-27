@@ -21,6 +21,8 @@
     "cloudinary": "2.7.0",
     "date-fns": "4.1.0",
     "jose": "6.1.0",
+    "livekit-client": "^2.23.0",
+    "livekit-server-sdk": "^2.19.2",
     "next": "^15.5.28",
     "react": "19.1.1",
     "react-dom": "19.1.1",

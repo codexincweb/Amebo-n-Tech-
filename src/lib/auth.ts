@@ -35,3 +35,34 @@ export async function isAdminRequest() {
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   return token ? verifySession(token) : false;
 }
+
+export async function createListenerTicket(identity: string, name: string) {
+  return new SignJWT({ role: "listener", name })
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(identity)
+    .setIssuedAt()
+    .setExpirationTime("2h")
+    .sign(secretKey());
+}
+
+export async function verifyListenerTicket(ticket: string) {
+  try {
+    const { payload } = await jwtVerify(ticket, secretKey());
+
+    if (
+      payload.role !== "listener" ||
+      typeof payload.sub !== "string" ||
+      !payload.sub.startsWith("listener-") ||
+      typeof payload.name !== "string"
+    ) {
+      return null;
+    }
+
+    return {
+      identity: payload.sub,
+      name: payload.name
+    };
+  } catch {
+    return null;
+  }
+}
