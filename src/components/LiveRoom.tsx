@@ -476,7 +476,7 @@ export default function LiveRoom() {
 
   return (
     <main className="site-container py-10 sm:py-16">
-      <section className="info-hero overflow-hidden">
+      <section className="info-hero live-hero overflow-hidden">
         <div className="relative z-10 max-w-3xl">
           <p className="eyebrow">AMEBO ’N TECH · LIVE AUDIO</p>
           <div className="mt-5 flex flex-wrap items-center gap-3">
