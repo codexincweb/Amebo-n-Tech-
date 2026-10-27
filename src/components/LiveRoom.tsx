@@ -49,6 +49,9 @@ export default function LiveRoom() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [titleInput, setTitleInput] = useState("Amebo 'n Tech Live");
+  const [meetingParticipants, setMeetingParticipants] = useState<
+    Array<{ identity: string; name: string; local: boolean; speaking: boolean }>
+  >([]);
   const roomRef = useRef<Room | null>(null);
   const audioTrackRef = useRef<Awaited<
     ReturnType<typeof createLocalAudioTrack>
@@ -132,6 +135,7 @@ export default function LiveRoom() {
     setCanPublish(false);
     setMuted(false);
     setIsHostParticipant(false);
+    setMeetingParticipants([]);
   }, []);
 
   useEffect(() => {
@@ -193,7 +197,7 @@ export default function LiveRoom() {
 
       room.on(
         RoomEvent.TrackSubscribed,
-        (track, _publication, _participant) => {
+        (track) => {
           if (track.kind !== Track.Kind.Audio) return;
 
           const element = track.attach() as HTMLAudioElement;
@@ -231,12 +235,57 @@ export default function LiveRoom() {
           setCanPublish(false);
           setMuted(false);
           setIsHostParticipant(false);
+          setMeetingParticipants([]);
           setMessage("Disconnected from the live room.");
         }
       });
 
       await room.connect(tokenData.serverUrl, tokenData.token);
       roomRef.current = room;
+
+      const syncMeetingParticipants = (activeSpeakers: string[] = []) => {
+        const speakingIdentities = new Set(activeSpeakers);
+
+        const participants = [
+          {
+            identity: room.localParticipant.identity,
+            name: room.localParticipant.name || name.trim() || "You",
+            local: true,
+            speaking:
+              room.localParticipant.isSpeaking ||
+              speakingIdentities.has(room.localParticipant.identity),
+          },
+          ...Array.from(room.remoteParticipants.values()).map((participant) => ({
+            identity: participant.identity,
+            name: participant.name || participant.identity || "Participant",
+            local: false,
+            speaking:
+              participant.isSpeaking ||
+              speakingIdentities.has(participant.identity),
+          })),
+        ];
+
+        setMeetingParticipants(participants);
+      };
+
+      const updateMeetingParticipants = () => {
+        syncMeetingParticipants(
+          room.activeSpeakers.map((participant) => participant.identity)
+        );
+      };
+
+      room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+        syncMeetingParticipants(
+          speakers.map((participant) => participant.identity)
+        );
+      });
+      room.on(RoomEvent.ParticipantConnected, updateMeetingParticipants);
+      room.on(RoomEvent.ParticipantDisconnected, updateMeetingParticipants);
+      room.on(RoomEvent.ParticipantNameChanged, updateMeetingParticipants);
+
+      syncMeetingParticipants(
+        room.activeSpeakers.map((participant) => participant.identity)
+      );
 
       let microphoneReady = false;
 
@@ -476,6 +525,186 @@ export default function LiveRoom() {
 
   return (
     <main className="site-container py-10 sm:py-16">
+      <style jsx>{`
+        .amebo-meeting-stage {
+          padding: 1.1rem;
+          border: 1px solid #263449;
+          border-radius: 1.25rem;
+          color: #f8fafc;
+          background: radial-gradient(ellipse at top, #26364c 0%, #111827 72%);
+        }
+        .amebo-live-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: .45rem;
+          border: 1px solid #365a4b;
+          border-radius: 999px;
+          padding: .35rem .6rem;
+          color: #bbf7d0;
+          font-size: .68rem;
+          font-weight: 800;
+          letter-spacing: .08em;
+        }
+        .amebo-live-pill > span {
+          width: .45rem;
+          height: .45rem;
+          border-radius: 50%;
+          background: #4ade80;
+          box-shadow: 0 0 0 3px #4ade8022;
+        }
+        .amebo-participant-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+          gap: .7rem;
+        }
+        .amebo-participant-tile {
+          position: relative;
+          display: flex;
+          min-width: 0;
+          min-height: 145px;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: .65rem;
+          overflow: hidden;
+          border: 1px solid #39465a;
+          border-radius: 1rem;
+          padding: 1rem .5rem .8rem;
+          background: #1e293b;
+          transition: border-color .2s, background .2s;
+        }
+        .amebo-participant-tile.is-speaking {
+          border-color: #4ade80;
+          background: #203a38;
+        }
+        .amebo-avatar-wrap {
+          position: relative;
+          display: grid;
+          place-items: center;
+        }
+        .amebo-avatar {
+          display: grid;
+          width: 3.7rem;
+          height: 3.7rem;
+          place-items: center;
+          border: 1px solid #64748b;
+          border-radius: 50%;
+          background: linear-gradient(145deg, #475569, #334155);
+          color: #fff;
+          font-size: 1.5rem;
+          font-weight: 750;
+        }
+        .is-speaking .amebo-avatar {
+          border-color: #86efac;
+          background: linear-gradient(145deg, #15803d, #166534);
+        }
+        .amebo-speaking-ring {
+          position: absolute;
+          inset: -.35rem;
+          border: 2px solid #4ade80;
+          border-radius: 50%;
+          animation: amebo-ring 1.6s ease-out infinite;
+          pointer-events: none;
+        }
+        .amebo-participant-name {
+          max-width: 100%;
+          overflow-wrap: anywhere;
+          color: #f1f5f9;
+          font-size: .8rem;
+          font-weight: 650;
+          text-align: center;
+        }
+        .amebo-speaking-bars {
+          display: flex;
+          height: 12px;
+          align-items: center;
+          gap: 3px;
+          opacity: .25;
+        }
+        .amebo-speaking-bars span {
+          width: 3px;
+          height: 4px;
+          border-radius: 4px;
+          background: #86efac;
+        }
+        .is-speaking .amebo-speaking-bars {
+          opacity: 1;
+        }
+        .is-speaking .amebo-speaking-bars span {
+          animation: amebo-wave .65s ease-in-out infinite alternate;
+        }
+        .is-speaking .amebo-speaking-bars span:nth-child(2) { animation-delay: .12s; }
+        .is-speaking .amebo-speaking-bars span:nth-child(3) { animation-delay: .25s; }
+        .is-speaking .amebo-speaking-bars span:nth-child(4) { animation-delay: .08s; }
+        .is-speaking .amebo-speaking-bars span:nth-child(5) { animation-delay: .32s; }
+        .amebo-meeting-toolbar {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          justify-content: center;
+          gap: .65rem;
+          border-top: 1px solid #39465a;
+          padding-top: 1.1rem;
+        }
+        .amebo-control-button {
+          display: inline-flex;
+          min-height: 54px;
+          min-width: 68px;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: .3rem;
+          border: 1px solid #475569;
+          border-radius: 1rem;
+          padding: .55rem .9rem;
+          background: #334155;
+          color: #f8fafc;
+          font-size: .72rem;
+          font-weight: 650;
+          cursor: pointer;
+          transition: background .15s, transform .15s;
+        }
+        .amebo-control-button:disabled {
+          cursor: not-allowed;
+          opacity: .55;
+        }
+        .amebo-control-button:active:not(:disabled) { transform: scale(.97); }
+        .amebo-control-button svg {
+          width: 22px;
+          height: 22px;
+          fill: none;
+          stroke: currentColor;
+          stroke-width: 1.8;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+        }
+        .amebo-control-button.is-muted { background: #7f1d1d; border-color: #b91c1c; }
+        .amebo-control-button.amebo-leave-button {
+          min-width: 78px;
+          border-color: #dc2626;
+          background: #dc2626;
+          color: white;
+        }
+        @keyframes amebo-wave {
+          from { height: 3px; }
+          to { height: 12px; }
+        }
+        @keyframes amebo-ring {
+          0% { opacity: .7; transform: scale(.94); }
+          100% { opacity: 0; transform: scale(1.18); }
+        }
+        @media (max-width: 420px) {
+          .amebo-meeting-stage { padding: .8rem; }
+          .amebo-participant-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .amebo-control-button { flex: 1 1 72px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .amebo-speaking-ring, .is-speaking .amebo-speaking-bars span {
+            animation: none;
+          }
+        }
+      `}</style>
+
       <section className="info-hero live-hero overflow-hidden">
         <div className="relative z-10 max-w-3xl">
           <p className="eyebrow">AMEBO ’N TECH · LIVE AUDIO</p>
@@ -572,47 +801,114 @@ export default function LiveRoom() {
           )}
 
           {connected && (
-            <div className="mt-6 flex flex-wrap gap-3">
-              {canPublish && (
+            <div className="amebo-meeting-stage mt-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-sm font-semibold text-white">
+                  Live conversation
+                </span>
+                <span className="amebo-live-pill">
+                  <span aria-hidden="true" /> CONNECTED
+                </span>
+              </div>
+
+              <div className="amebo-participant-grid mt-5" aria-label="Room participants">
+                {meetingParticipants.map((person) => (
+                  <div
+                    key={person.identity}
+                    className={`amebo-participant-tile${person.speaking ? " is-speaking" : ""}`}
+                    aria-label={`${person.name}${person.speaking ? ", speaking" : ""}`}
+                  >
+                    <div className="amebo-avatar-wrap">
+                      <div className="amebo-avatar" aria-hidden="true">
+                        {(person.name.trim().charAt(0) || "?").toUpperCase()}
+                      </div>
+                      {person.speaking && (
+                        <span className="amebo-speaking-ring" aria-hidden="true" />
+                      )}
+                    </div>
+                    <span className="amebo-participant-name">
+                      {person.name}{person.local ? " (You)" : ""}
+                    </span>
+                    <div className="amebo-speaking-bars" aria-label={person.speaking ? "Speaking" : "Not speaking"}>
+                      {[0, 1, 2, 3, 4].map((bar) => (
+                        <span key={bar} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {meetingParticipants.length === 0 && (
+                  <div className="amebo-participant-tile">
+                    <div className="amebo-avatar" aria-hidden="true">
+                      {(name.trim().charAt(0) || "Y").toUpperCase()}
+                    </div>
+                    <span className="amebo-participant-name">{name.trim() || "You"}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="amebo-meeting-toolbar mt-6">
+                {canPublish && (
+                  <button
+                    type="button"
+                    className={`amebo-control-button${muted ? " is-muted" : ""}`}
+                    onClick={() => void toggleMicrophone()}
+                    disabled={busy}
+                    aria-label={muted ? "Unmute microphone" : "Mute microphone"}
+                    title={muted ? "Unmute microphone" : "Mute microphone"}
+                  >
+                    {muted ? (
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9V6a3 3 0 0 0-5.83-.9M5 10v2a7 7 0 0 0 11.9 4.95M12 19v3m-4 0h8M3 3l18 18M19 10v2a7 7 0 0 1-.3 2" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="9" y="2" width="6" height="12" rx="3" />
+                        <path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8" />
+                      </svg>
+                    )}
+                    <span>{muted ? "Unmute" : "Mute"}</span>
+                  </button>
+                )}
+
+                {!canPublish && !isHostParticipant && (
+                  <>
+                    <button
+                      type="button"
+                      className="amebo-control-button"
+                      onClick={() => void handleSpeakerRequest()}
+                      disabled={busy}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 3v18M3 12h18" />
+                      </svg>
+                      <span>Request to speak</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="amebo-control-button"
+                      onClick={() => void checkSpeakerApproval()}
+                      disabled={busy}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20 11.5a8 8 0 1 1-2.35-5.65M20 4v6h-6M8 12l2.5 2.5L20 5" />
+                      </svg>
+                      <span>Check approval</span>
+                    </button>
+                  </>
+                )}
+
                 <button
                   type="button"
-                  className="button-secondary"
-                  onClick={() => void toggleMicrophone()}
+                  className="amebo-control-button amebo-leave-button"
+                  onClick={() => void disconnect()}
                   disabled={busy}
                 >
-                  {muted ? "Unmute microphone" : "Mute microphone"}
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M10 17l5-5-5-5M15 12H3M13 3h5a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3h-5" />
+                  </svg>
+                  <span>Leave</span>
                 </button>
-              )}
-
-              {!canPublish && !isHostParticipant && (
-                <>
-                  <button
-                    type="button"
-                    className="button-primary"
-                    onClick={() => void handleSpeakerRequest()}
-                    disabled={busy}
-                  >
-                    Request to speak
-                  </button>
-                  <button
-                    type="button"
-                    className="button-secondary"
-                    onClick={() => void checkSpeakerApproval()}
-                    disabled={busy}
-                  >
-                    Check approval
-                  </button>
-                </>
-              )}
-
-              <button
-                type="button"
-                className="button-danger"
-                onClick={() => void disconnect()}
-                disabled={busy}
-              >
-                Leave room
-              </button>
+              </div>
             </div>
           )}
 
@@ -685,7 +981,7 @@ export default function LiveRoom() {
 
               {requests.length === 0 ? (
                 <p className="mt-4 text-sm leading-6 text-stone-500">
-                  No pending requests. New requests. New requests will appear here automatically.
+                  No pending requests. New requests will appear here automatically.
                 </p>
               ) : (
                 <ul className="mt-4 space-y-3">
